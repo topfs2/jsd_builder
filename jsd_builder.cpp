@@ -60,7 +60,10 @@ void print_usage(const char *application)
 int main(int argc, char* argv[])
 {
   if (argc < 4)
+  {
     print_usage(argv[0]);
+    return -1;
+  }
 
   ofstream out ("ServiceDescription.h", ofstream::binary);
 
