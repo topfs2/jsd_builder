@@ -39,14 +39,30 @@ void print_json(ifstream &in, ofstream &out)
 
   while (getline(in, line, '\n'))
   {
-    out << endl << "  \"";
+    out << endl << "  ";
+	bool started = false;
     for (string::iterator itr = line.begin(); itr != line.end(); itr++)
     {
+      // Replace tabs with 2 spaces
+      if (*itr == '\t')
+      {
+        out << "  ";
+        continue;
+      }
+      // Only print a " before the first real sign
+      if (!started && *itr != ' ')
+      {
+        started = true;
+        out << '"';
+      }
+      // Add a backslash before a double-quote
       if (*itr == '"')
         out << '\\';
       out << (*itr);
     }
-    out << '"';
+    // Only print a closing " if there was real content on the line
+    if (started)
+      out << '"';
   }
 
   out << ";" << endl;
