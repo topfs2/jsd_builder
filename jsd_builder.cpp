@@ -36,18 +36,53 @@ void print_license(ifstream &in, ofstream &out)
 void print_json(ifstream &in, ofstream &out)
 {
   string line;
+  unsigned int count = 0;
+  bool closing = false;
 
   while (getline(in, line, '\n'))
   {
-    out << endl << "  ";
-	bool started = false;
+    // No need to handle the last line
+    if (line == "}")
+    {
+      out << endl;
+      continue;
+    }
+    
+    // If we just closed a whole object we need to print the separator
+    if (closing)
+      out << "," << endl;
+    
+    out << "  ";
+    bool started = false;
+    closing = false;
     for (string::iterator itr = line.begin(); itr != line.end(); itr++)
     {
+      // Count opening { but ignore the first one
+      if (*itr == '{')
+      {
+        count++;
+        if (count == 1)
+          break;
+      }
       // Replace tabs with 2 spaces
       if (*itr == '\t')
       {
         out << "  ";
         continue;
+      }
+      // Count closing } but ignore the last one
+      if (*itr == '}')
+      {
+        count--;
+        if (count == 0)
+          break;
+
+        if (count == 1)
+        {
+          out << "\"}\"";
+          closing = true;
+          break;
+        }
       }
       // Only print a " before the first real sign
       if (!started && *itr != ' ')
@@ -63,19 +98,21 @@ void print_json(ifstream &in, ofstream &out)
     // Only print a closing " if there was real content on the line
     if (started)
       out << '"';
+    
+    // Only print a newline if we haven't just closed a whole object
+    if (!closing)
+      out << endl;
   }
-
-  out << ";" << endl;
 }
 
 void print_usage(const char *application)
 {
-  cout << application << " [license] [service_description.json] [notification_description.json]" << endl;
+  cout << application << " [version] [license] [methods.json] [types.json] [notifications.json]" << endl;
 }
 
 int main(int argc, char* argv[])
 {
-  if (argc < 4)
+  if (argc < 6)
   {
     print_usage(argv[0]);
     return -1;
@@ -83,13 +120,14 @@ int main(int argc, char* argv[])
 
   ofstream out ("ServiceDescription.h", ofstream::binary);
 
-  ifstream license(argv[1], ios_base::in);
-  ifstream service_description(argv[2], ios_base::in);
-  ifstream notification_description(argv[3], ios_base::in);
+  ifstream license(argv[2], ios_base::in);
+  ifstream methods(argv[3], ios_base::in);
+  ifstream types(argv[4], ios_base::in);
+  ifstream notifications(argv[5], ios_base::in);
 
-  if (!(license && service_description && notification_description))
+  if (!(license && methods && types && notifications))
   {
-    cout << "Failed to find one or more of license, service_description.json or notification_description.json" << endl;
+    cout << "Failed to find one or more of license, methods.json, types.json or notifications.json" << endl;
     return -1;
   }
 
@@ -101,14 +139,24 @@ int main(int argc, char* argv[])
 
   out << "namespace JSONRPC" << endl;
   out << "{" << endl;
-
-  out << "  const char* const JSON_SERVICE_DESCRIPTION = ";
-  print_json(service_description, out);
-
+  out << "  const char* const JSONRPC_SERVICE_ID          = \"http://www.xbmc.org/jsonrpc/ServiceDescription.json\";" << endl;
+  out << "  const int         JSONRPC_SERVICE_VERSION     = " << argv[1] << ";" << endl;
+  out << "  const char* const JSONRPC_SERVICE_DESCRIPTION = \"JSON RPC API of XBMC\";" << endl;
   out << endl;
 
-  out << "  const char* const JSON_NOTIFICATION_DESCRIPTION =";
-  print_json(notification_description, out);
+  out << "  const char* const JSONRPC_SERVICE_TYPES[] = {";
+  print_json(types, out);
+  out << "  };" << endl;
+  out << endl;
+
+  out << "  const char* const JSONRPC_SERVICE_METHODS[] = {";
+  print_json(methods, out);
+  out << "  };" << endl;
+  out << endl;
+
+  out << "  const char* const JSONRPC_SERVICE_NOTIFICATIONS[] = {";
+  print_json(notifications, out);
+  out << "  };" << endl;
 
   out << "}" << endl;
 
